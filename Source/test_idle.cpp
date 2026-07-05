@@ -8,6 +8,8 @@
 #include "DSP/DriveEffect.h"
 #include "DSP/FilterEffect.h"
 #include "DSP/DelayEffect.h"
+#include "DSP/ReverbEffect.h"
+#include "DSP/PitchEffect.h"
 #include <cstdio>
 #include <cmath>
 #include <cstdlib>
@@ -75,6 +77,8 @@ int main()
     { DriveEffect d;  test ("DriveEffect",  d); }
     { FilterEffect f; test ("FilterEffect", f); }
     { DelayEffect  y; test ("DelayEffect",  y); }
+    { ReverbEffect r; test ("ReverbEffect", r); }
+    { PitchEffect  p; test ("PitchEffect",  p); }
 
     printf ("\n%s  (%d failure%s)\n", failures ? "FAILURES PRESENT" : "ALL ENGINES PASS",
             failures, failures == 1 ? "" : "s");

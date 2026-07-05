@@ -8,6 +8,8 @@
 #include "DSP/DriveEffect.h"
 #include "DSP/FilterEffect.h"
 #include "DSP/DelayEffect.h"
+#include "DSP/ReverbEffect.h"
+#include "DSP/PitchEffect.h"
 #include "Licensing/LicenseManager.h"
 
 class OctaneProcessor : public juce::AudioProcessor

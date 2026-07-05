@@ -55,9 +55,9 @@ OctaneProcessor::OctaneProcessor()
       apvts (*this, nullptr, "OCTANE", createParameterLayout())
 {
     effects[GearDrive]  = std::make_unique<DriveEffect>();
-    effects[GearReverb] = nullptr;                       // Phase 2 (FDN)
+    effects[GearReverb] = std::make_unique<ReverbEffect>();
     effects[GearDelay]  = std::make_unique<DelayEffect>();
-    effects[GearPitch]  = nullptr;                       // Phase 2 (Signalsmith)
+    effects[GearPitch]  = std::make_unique<PitchEffect>();
     effects[GearFilter] = std::make_unique<FilterEffect>();
     effects[GearClean]  = nullptr;                       // dry passthrough
 
