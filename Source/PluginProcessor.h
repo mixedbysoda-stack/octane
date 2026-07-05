@@ -2,7 +2,12 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
-#include "DSP/GearEngine.h"
+#include <array>
+#include <memory>
+#include "DSP/Effect.h"
+#include "DSP/DriveEffect.h"
+#include "DSP/FilterEffect.h"
+#include "DSP/DelayEffect.h"
 #include "Licensing/LicenseManager.h"
 
 class OctaneProcessor : public juce::AudioProcessor
@@ -46,22 +51,36 @@ public:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    // gear index → effect slot. Reverb(1) + Pitch(3) are Phase-2 (nullptr = dry
+    // passthrough for now); Clean(5) is always a dry passthrough.
+    enum Gear { GearDrive = 0, GearReverb, GearDelay, GearPitch, GearFilter, GearClean, NumGears };
+
 private:
     juce::AudioProcessorValueTreeState apvts;
-    GearEngine engine;
+    std::array<std::unique_ptr<Effect>, NumGears> effects;   // indexed by gear
     juce::dsp::DryWetMixer<float> dryWet { 512 };
     LicenseManager licenseManager;
+
+    juce::AudioBuffer<float> xfadeScratch;   // input snapshot for gear-switch crossfade
+    int activeGear    = GearDrive;
+    int fromGear      = GearDrive;
+    int xfadeLeft     = 0;                    // samples remaining in the crossfade
+    int xfadeLen      = 0;                    // total crossfade length (set in prepare)
+    int reportedLatency = 0;
 
     std::atomic<float> inputLevel { 0.0f };
     std::atomic<float> uiScale    { 1.0f };
 
     // cached parameter pointers (audio-thread safe)
     std::atomic<float>* pGear   = nullptr;
+    std::atomic<float>* pStyle  = nullptr;
     std::atomic<float>* pClutch = nullptr;
-    std::atomic<float>* pDrive  = nullptr;
-    std::atomic<float>* pTone   = nullptr;
+    std::atomic<float>* pK1     = nullptr;
+    std::atomic<float>* pK2     = nullptr;
     std::atomic<float>* pMix    = nullptr;
     std::atomic<float>* pOutput = nullptr;
+
+    void runEffect (int gear, juce::dsp::AudioBlock<float>& block, const EffectContext& ctx);
 
    #if DEMO_BUILD
     // 60 s play / 10 s mute demo cycle with a short crossfade

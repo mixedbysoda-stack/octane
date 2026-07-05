@@ -120,7 +120,9 @@ private:
     // --- style 2: tilt EQ around ~700 Hz ---
     void processTilt (juce::dsp::AudioBlock<float>& block, const EffectContext& ctx, int chans, int n)
     {
-        const float tiltDb = juce::jlimit (-12.0f, 12.0f, (ctx.clutch * 2.0f - 1.0f + ctx.tone) * 9.0f);
+        // k2 sets the tilt amount (0=flat mid, <0.5 darker, >0.5 brighter); clutch adds slope
+        const float tiltDb = juce::jlimit (-12.0f, 12.0f,
+                                           ((ctx.k2 * 2.0f - 1.0f) + (ctx.clutch - 0.5f)) * 9.0f);
         if (std::abs (tiltDb - lastTiltDb) > 0.05f)
         {
             lastTiltDb = tiltDb;

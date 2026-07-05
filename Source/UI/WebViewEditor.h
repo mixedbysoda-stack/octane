@@ -34,16 +34,17 @@ private:
 
     // Relays must outlive the WebBrowserComponent built from them.
     juce::WebSliderRelay gearRelay   { "gear" };
+    juce::WebSliderRelay styleRelay  { "style" };
     juce::WebSliderRelay clutchRelay { "clutch" };
-    juce::WebSliderRelay driveRelay  { "drive" };
-    juce::WebSliderRelay toneRelay   { "tone" };
+    juce::WebSliderRelay k1Relay     { "k1" };
+    juce::WebSliderRelay k2Relay     { "k2" };
     juce::WebSliderRelay mixRelay    { "mix" };
     juce::WebSliderRelay outputRelay { "output" };
 
     std::unique_ptr<juce::WebBrowserComponent> webView;
 
-    std::unique_ptr<juce::WebSliderParameterAttachment> gearAttach, clutchAttach,
-        driveAttach, toneAttach, mixAttach, outputAttach;
+    std::unique_ptr<juce::WebSliderParameterAttachment> gearAttach, styleAttach, clutchAttach,
+        k1Attach, k2Attach, mixAttach, outputAttach;
 
     std::unique_ptr<ActivationDialog> activationDialog;
 

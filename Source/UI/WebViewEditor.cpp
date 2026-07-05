@@ -37,8 +37,8 @@ OctaneWebViewEditor::~OctaneWebViewEditor()
 {
     stopTimer();
     // Attachments reference the relays + webview — tear down in order.
-    gearAttach.reset(); clutchAttach.reset(); driveAttach.reset();
-    toneAttach.reset(); mixAttach.reset();    outputAttach.reset();
+    gearAttach.reset(); styleAttach.reset(); clutchAttach.reset();
+    k1Attach.reset(); k2Attach.reset(); mixAttach.reset(); outputAttach.reset();
     webView.reset();
 }
 
@@ -60,9 +60,10 @@ void OctaneWebViewEditor::createWebView()
         .withResourceProvider ([this] (const auto& url) { return provideResource (url); },
                                juce::URL ("https://octane.carbonatedaudio.com").getOrigin())
         .withOptionsFrom (gearRelay)
+        .withOptionsFrom (styleRelay)
         .withOptionsFrom (clutchRelay)
-        .withOptionsFrom (driveRelay)
-        .withOptionsFrom (toneRelay)
+        .withOptionsFrom (k1Relay)
+        .withOptionsFrom (k2Relay)
         .withOptionsFrom (mixRelay)
         .withOptionsFrom (outputRelay)
         .withNativeFunction (juce::Identifier ("setUIScale"),
@@ -83,9 +84,10 @@ void OctaneWebViewEditor::createWebView()
     addAndMakeVisible (*webView);
 
     gearAttach   = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "gear"),   gearRelay,   nullptr);
+    styleAttach  = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "style"),  styleRelay,  nullptr);
     clutchAttach = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "clutch"), clutchRelay, nullptr);
-    driveAttach  = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "drive"),  driveRelay,  nullptr);
-    toneAttach   = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "tone"),   toneRelay,   nullptr);
+    k1Attach     = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "k1"),     k1Relay,     nullptr);
+    k2Attach     = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "k2"),     k2Relay,     nullptr);
     mixAttach    = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "mix"),    mixRelay,    nullptr);
     outputAttach = std::make_unique<juce::WebSliderParameterAttachment> (param (processor, "output"), outputRelay, nullptr);
 

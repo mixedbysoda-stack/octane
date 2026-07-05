@@ -126,6 +126,23 @@
   .pmenu li.sel{color:var(--ga)}
   .pmenu li .cat{font-size:8.5px; letter-spacing:.14em; color:var(--ink-faint)}
 
+  /* ============ STYLE SELECTOR ============ */
+  .stylesel{
+    display:flex; gap:4px; padding:0 2px; flex:0 0 auto;
+  }
+  .styleseg{
+    flex:1; height:22px; border-radius:6px; cursor:pointer;
+    background:linear-gradient(#171130,#110c22); border:1px solid var(--pill-edge);
+    color:var(--ink-dim); font-size:9.5px; font-weight:800; letter-spacing:.08em;
+    display:flex; align-items:center; justify-content:center; text-transform:uppercase;
+  }
+  .styleseg:hover{color:var(--ink); border-color:#3a3358}
+  .styleseg.sel{
+    color:var(--ga); border-color:color-mix(in srgb, var(--ga) 60%, var(--pill-edge));
+    box-shadow:0 0 10px color-mix(in srgb, var(--ga) 28%, transparent) inset;
+  }
+  .stylesel.soon{opacity:.5}
+
   /* ============ KNOB ROW ============ */
   .knobrow{
     display:flex; align-items:flex-start; justify-content:space-around;
@@ -251,16 +268,19 @@
     </div>
   </div>
 
+  <!-- STYLE SELECTOR (styles of the active effect) -->
+  <div class="stylesel" id="stylesel" role="tablist" aria-label="Effect style"></div>
+
   <!-- KNOB ROW -->
   <div class="knobrow" id="knobrow"></div>
 
   <!-- SHIFTER -->
   <div class="shifter">
-    <div class="glabel g1" data-gear="0"><div class="g">1</div><div class="n">TAPE</div></div>
-    <div class="glabel g3" data-gear="2"><div class="g">3</div><div class="n">CONSOLE</div></div>
-    <div class="glabel g5" data-gear="4"><div class="g">5</div><div class="n">FUZZ</div></div>
-    <div class="glabel g2" data-gear="1"><div class="g">2</div><div class="n">TUBE</div></div>
-    <div class="glabel g4" data-gear="3"><div class="g">4</div><div class="n">CLIP</div></div>
+    <div class="glabel g1" data-gear="0"><div class="g">1</div><div class="n">DRIVE</div></div>
+    <div class="glabel g3" data-gear="2"><div class="g">3</div><div class="n">DELAY</div></div>
+    <div class="glabel g5" data-gear="4"><div class="g">5</div><div class="n">FILTER</div></div>
+    <div class="glabel g2" data-gear="1"><div class="g">2</div><div class="n">REVERB</div></div>
+    <div class="glabel g4" data-gear="3"><div class="g">4</div><div class="n">PITCH</div></div>
     <div class="glabel gR" data-gear="5"><div class="g">R</div><div class="n">CLEAN</div></div>
 
     <div class="plate-wrap">
@@ -324,22 +344,25 @@ function makeState(name, lo, hi, def){
 }
 
 const P = {
-  gear:   makeState("gear",   0, 5,  2),
-  clutch: makeState("clutch", 0, 1,  0),
-  drive:  makeState("drive",  0, 10, 3),
-  tone:   makeState("tone",  -1, 1,  0),
+  gear:   makeState("gear",   0, 5,  0),
+  style:  makeState("style",  0, 4,  0),
+  clutch: makeState("clutch", 0, 1,  0.5),
+  k1:     makeState("k1",     0, 1,  0.5),
+  k2:     makeState("k2",     0, 1,  0.5),
   mix:    makeState("mix",    0, 1,  1),
   output: makeState("output",-12, 12, 0),
 };
 
 // ---- gear visuals ----
+// knobs = [clutch label, k1 label, k2 label]; styles = style-selector labels.
+// soon = Phase-2 engine (routes dry for now).
 const GEARS = [
-  {num:"1", name:"TAPE",    ga:"#00d4ff", idle:1.6},
-  {num:"2", name:"TUBE",    ga:"#ff8c42", idle:2.9},
-  {num:"3", name:"CONSOLE", ga:"#ffd700", idle:4.3},
-  {num:"4", name:"CLIP",    ga:"#ff3366", idle:5.9},
-  {num:"5", name:"FUZZ",    ga:"#cc33ff", idle:7.4},
-  {num:"R", name:"CLEAN",   ga:"#ffffff", idle:0.5},
+  {num:"1", name:"DRIVE",  ga:"#00d4ff", idle:4.3, styles:["Tape","Tube","Console","Clip","Fuzz"], knobs:["DRIVE","TONE","—"]},
+  {num:"2", name:"REVERB", ga:"#ff8c42", idle:2.5, styles:["Room","Hall","Plate","Canyon"],        knobs:["DECAY","SIZE","TONE"], soon:true},
+  {num:"3", name:"DELAY",  ga:"#ffd700", idle:3.5, styles:["Slap","1/8","Dot 8","Long"],            knobs:["F.BACK","TIME","TONE"]},
+  {num:"4", name:"PITCH",  ga:"#ff3366", idle:3.0, styles:["-Oct","+5th","Detune","Shimmer"],       knobs:["MIX","INTVL","—"],     soon:true},
+  {num:"5", name:"FILTER", ga:"#cc33ff", idle:2.0, styles:["Phone","LP","Tilt","Reso"],             knobs:["SWEEP","FREQ","RESO"]},
+  {num:"R", name:"CLEAN",  ga:"#ffffff", idle:0.5, styles:["Dry"],                                  knobs:["—","—","—"]},
 ];
 const POS = { 0:[91,70], 1:[91,230], 2:[150,70], 3:[150,230], 4:[209,70], 5:[209,230] };
 
@@ -448,17 +471,43 @@ function stepGate(){
 requestAnimationFrame(stepGate);
 
 // visuals only — position is owned by the physics loop above
+const stylesel = document.getElementById('stylesel');
+
+function buildStyleSel(g){
+  stylesel.innerHTML = '';
+  stylesel.classList.toggle('soon', !!g.soon);
+  const cur = Math.round(P.style.get());
+  g.styles.forEach((label, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'styleseg' + (i === cur ? ' sel' : '');
+    seg.setAttribute('role','tab');
+    seg.textContent = label;
+    seg.addEventListener('click', () => P.style.set(i));
+    stylesel.appendChild(seg);
+  });
+}
+function refreshStyleSel(){
+  const cur = Math.round(P.style.get());
+  [...stylesel.children].forEach((seg, i) => seg.classList.toggle('sel', i === cur));
+}
+P.style.onChange(() => { refreshStyleSel(); markModified(); });
+
 function renderGear(){
   const idx = Math.round(P.gear.get());
-  const g = GEARS[idx] || GEARS[2];
+  const g = GEARS[idx] || GEARS[0];
   device.style.setProperty('--ga', g.ga);
   gearnum.textContent = g.num;
-  flavor.textContent  = g.name;
+  flavor.textContent  = g.name + (g.soon ? ' (soon)' : '');
   document.querySelectorAll('.glabel').forEach(el =>
     el.classList.toggle('active', Number(el.dataset.gear) === idx));
-  knobEl.setAttribute('aria-valuetext', `Gear ${g.num}, ${g.name}`);
+  knobEl.setAttribute('aria-valuetext', `${g.name}`);
+  // relabel the dynamic knobs (clutch/k1/k2) for this effect
+  if (knobLabelEls[0]) knobLabelEls[0].textContent = g.knobs[0];
+  if (knobLabelEls[1]) knobLabelEls[1].textContent = g.knobs[1];
+  if (knobLabelEls[2]) knobLabelEls[2].textContent = g.knobs[2];
+  buildStyleSel(g);
   // when the gear changes from anywhere other than an active drag, seat the stick in that slot
-  if (!dragging) { const p = POS[idx] || POS[2]; desiredX = p[0]; desiredY = p[1]; }
+  if (!dragging) { const p = POS[idx] || POS[0]; desiredX = p[0]; desiredY = p[1]; }
 }
 P.gear.onChange(() => { renderGear(); markModified(); });
 
@@ -506,15 +555,16 @@ knobEl.addEventListener('pointerup', () => {
   if (g !== Math.round(P.gear.get())) P.gear.set(g);
 });
 
-// ---- knob row ----
+// ---- knob row ----  (clutch/k1/k2 relabel per gear; mix/output fixed)
 const KNOBS = [
-  {id:'drive',  name:'DRIVE',  lo:0,   hi:10, def:3, fmt:v => v.toFixed(1)},
-  {id:'clutch', name:'CLUTCH', lo:0,   hi:1,  def:0, fmt:v => v.toFixed(2), cls:'clutchk'},
-  {id:'tone',   name:'TONE',   lo:-1,  hi:1,  def:0, fmt:v => (v>0?'+':'') + v.toFixed(2)},
-  {id:'mix',    name:'MIX',    lo:0,   hi:1,  def:1, fmt:v => Math.round(v*100) + '%'},
-  {id:'output', name:'OUT',    lo:-12, hi:12, def:0, fmt:v => (v>0?'+':'') + v.toFixed(1)},
+  {id:'clutch', name:'DRIVE', lo:0,   hi:1,  def:0.5, fmt:v => v.toFixed(2), cls:'clutchk', dyn:0},
+  {id:'k1',     name:'TONE',  lo:0,   hi:1,  def:0.5, fmt:v => v.toFixed(2), dyn:1},
+  {id:'k2',     name:'—',     lo:0,   hi:1,  def:0.5, fmt:v => v.toFixed(2), dyn:2},
+  {id:'mix',    name:'MIX',   lo:0,   hi:1,  def:1,   fmt:v => Math.round(v*100) + '%'},
+  {id:'output', name:'OUT',   lo:-12, hi:12, def:0,   fmt:v => (v>0?'+':'') + v.toFixed(1)},
 ];
 const knobrow = document.getElementById('knobrow');
+const knobLabelEls = {};   // dyn index -> the .kname element to relabel per gear
 
 function makeKnob(cfg){
   const el = document.createElement('div');
@@ -529,6 +579,7 @@ function makeKnob(cfg){
     <div class="kname">${cfg.name}</div>
     <div class="kval"></div>`;
   knobrow.appendChild(el);
+  if (cfg.dyn !== undefined) knobLabelEls[cfg.dyn] = el.querySelector('.kname');
 
   const arc = el.querySelector('.arc'), ptr = el.querySelector('.ptr'), kval = el.querySelector('.kval');
   const A0 = -135, A1 = 135;
@@ -567,14 +618,14 @@ KNOBS.forEach(makeKnob);
 
 // ---- presets (UI quick-recall; full state lives in DAW sessions) ----
 const PRESETS = [
-  {name:"Init",          cat:"FACTORY", v:{gear:2, clutch:0.00, drive:3.0, tone: 0.00, mix:1.00, output:0}},
-  {name:"Vocal Glue",    cat:"VOCAL",   v:{gear:1, clutch:0.30, drive:2.5, tone: 0.10, mix:0.75, output:0}},
-  {name:"Console Punch", cat:"BUS",     v:{gear:2, clutch:0.50, drive:4.0, tone: 0.15, mix:1.00, output:0}},
-  {name:"Drum Smash",    cat:"DRUMS",   v:{gear:3, clutch:0.60, drive:6.0, tone: 0.20, mix:0.65, output:-1}},
-  {name:"Bass Grit",     cat:"BASS",    v:{gear:4, clutch:0.20, drive:4.5, tone:-0.25, mix:0.55, output:0}},
-  {name:"Tape Warmth",   cat:"MASTER",  v:{gear:0, clutch:0.40, drive:2.0, tone:-0.05, mix:1.00, output:0}},
-  {name:"Lo-Fi Crush",   cat:"FX",      v:{gear:3, clutch:0.90, drive:8.0, tone:-0.40, mix:1.00, output:-2}},
-  {name:"Clean A/B",     cat:"UTILITY", v:{gear:5, clutch:0.00, drive:3.0, tone: 0.00, mix:1.00, output:0}},
+  {name:"Init",         cat:"FACTORY", v:{gear:0, style:0, clutch:0.50, k1:0.50, k2:0.50, mix:1.00, output:0}},
+  {name:"Warm Drive",   cat:"DRIVE",   v:{gear:0, style:1, clutch:0.50, k1:0.55, k2:0.50, mix:1.00, output:0}},
+  {name:"Console Push", cat:"DRIVE",   v:{gear:0, style:2, clutch:0.60, k1:0.50, k2:0.50, mix:1.00, output:0}},
+  {name:"Slapback",     cat:"DELAY",   v:{gear:2, style:0, clutch:0.35, k1:0.50, k2:0.60, mix:0.35, output:0}},
+  {name:"Dotted Dream", cat:"DELAY",   v:{gear:2, style:2, clutch:0.50, k1:0.50, k2:0.50, mix:0.30, output:0}},
+  {name:"Telephone",    cat:"FILTER",  v:{gear:4, style:0, clutch:0.40, k1:0.50, k2:0.40, mix:1.00, output:0}},
+  {name:"Filter Sweep", cat:"FILTER",  v:{gear:4, style:1, clutch:0.60, k1:0.35, k2:0.60, mix:1.00, output:0}},
+  {name:"Clean A/B",    cat:"UTILITY", v:{gear:5, style:0, clutch:0.50, k1:0.50, k2:0.50, mix:1.00, output:0}},
 ];
 let presetIdx = 0, modified = false, applying = false;
 const ptext = document.getElementById('ptext');
