@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCTANE</title>
+<style>
+  :root{
+    /* Carbonated Audio brand palette */
+    --bezel:#1a1430; --twill:#120e22; --bezel-edge:#2a2440;
+    --void:#0d0a1a; --void-edge:#2a2440;
+    --gate:#0a0715;
+    --accent:#ff6b2b; --accent-light:#ff8c42;
+    --led:#ff3366; --redline:#e63946;
+    --ink:#ffffff; --ink-dim:#a09bb5; --ink-faint:#6b6580;
+    --pill:#1a1430; --pill-edge:#2a2440;
+    --cyan:#00d4ff; --magenta:#cc33ff; --pink:#ff3366; --yellow:#ffd700;
+    --ga:#ffd700;   /* active-gear accent, set per gear via JS */
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --disp:"Helvetica Neue",Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-user-select:none; user-select:none}
+  html,body{height:100%; margin:0; overflow:hidden}
+  body{
+    font-family:var(--disp); background:var(--void); color:var(--ink);
+    width:420px; height:700px;
+  }
+
+  /* ============ DEVICE (fills the plugin window) ============ */
+  .device{
+    position:relative; width:420px; height:700px; padding:14px;
+    background:
+      repeating-conic-gradient(from 0deg at 1px 1px, rgba(180,150,255,.035) 0deg 90deg, transparent 90deg 180deg),
+      repeating-linear-gradient(45deg, #1d1638 0 2px, #171130 2px 4px),
+      var(--bezel);
+    background-size:4px 4px, 6px 6px, cover;
+    display:flex; flex-direction:column; gap:10px;
+  }
+
+  /* ============ TITLE BAR ============ */
+  .titlebar{display:flex; align-items:center; justify-content:center; position:relative; padding:2px 6px 0; flex:0 0 24px}
+  .led{
+    position:absolute; left:6px; top:50%; transform:translateY(-40%);
+    width:11px; height:11px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ff8a80, var(--led) 55%, #7c130c 100%);
+    box-shadow:0 0 8px 1px rgba(255,51,102,.7), 0 0 0 1px rgba(0,0,0,.6);
+  }
+  .brand{
+    font-weight:800; letter-spacing:.42em; font-size:15px; text-indent:.42em;
+    color:#cfd3d7; text-shadow:0 1px 0 #000;
+  }
+  .sizebtn{
+    position:absolute; right:30px; top:50%; transform:translateY(-50%);
+    height:18px; padding:0 7px; border-radius:9px; border:1px solid var(--pill-edge);
+    background:linear-gradient(#1c1638,#141026); color:var(--ink-dim);
+    font-size:9px; font-weight:700; letter-spacing:.08em; font-variant-numeric:tabular-nums;
+    display:inline-flex; align-items:center; gap:4px; cursor:pointer;
+  }
+  .sizebtn:hover{color:var(--ink); border-color:#3a3358}
+  .sizebtn svg{width:9px; height:9px}
+  .note{position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--accent); font-size:14px}
+
+  /* ============ DISPLAY MODULE ============ */
+  .display{
+    border-radius:14px; padding:10px 12px;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.014) 0 3px, transparent 3px 6px),
+      radial-gradient(120% 140% at 50% -20%, #12161b, var(--void) 70%);
+    box-shadow:0 0 0 1px #000, 0 2px 4px rgba(0,0,0,.6) inset, 0 -1px 0 rgba(255,255,255,.04) inset;
+    display:flex; flex-direction:column; gap:8px; flex:0 0 auto;
+  }
+  .gauges{display:flex; align-items:center; gap:6px; min-height:92px}
+
+  .tach{width:150px; height:92px; flex:0 0 auto; position:relative}
+  .tach svg{width:100%; height:100%; overflow:visible}
+  .tach .cap{
+    position:absolute; left:50%; top:64%; transform:translateX(-50%);
+    font-size:7.5px; letter-spacing:.14em; color:var(--ink-dim); white-space:nowrap;
+  }
+
+  .readout{flex:1; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; padding-right:6px}
+  .gearnum{
+    font-weight:800; font-size:58px; line-height:.86; color:#fff;
+    text-shadow:0 2px 6px rgba(0,0,0,.6), 0 0 22px color-mix(in srgb, var(--ga) 45%, transparent);
+    font-variant-numeric:tabular-nums; transition:text-shadow .3s;
+  }
+  .flavor{
+    margin-top:4px; font-weight:800; letter-spacing:.22em; font-size:14px;
+    color:var(--ga); text-shadow:0 0 12px color-mix(in srgb, var(--ga) 55%, transparent);
+    transition:color .3s, text-shadow .3s;
+  }
+
+  /* preset browser */
+  .preset{display:flex; align-items:center; gap:6px; position:relative}
+  .pbtn{
+    height:26px; min-width:26px; padding:0 7px; border-radius:7px;
+    background:linear-gradient(#1c1638,#141026); border:1px solid var(--pill-edge);
+    color:var(--ink-dim); font-size:15px; line-height:1; display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 1px 0 rgba(255,255,255,.04) inset;
+  }
+  .pbtn:hover{color:var(--ink); border-color:#3a3358}
+  .pbtn:active{transform:translateY(1px)}
+  .pname{
+    flex:1; min-width:0; height:26px; padding:0 10px; border-radius:7px;
+    background:linear-gradient(#171130,#110c22); border:1px solid var(--pill-edge);
+    display:flex; align-items:center; gap:7px; cursor:pointer; color:var(--ink);
+    box-shadow:0 1px 0 rgba(255,255,255,.03) inset; font:inherit;
+  }
+  .pname:hover{border-color:#3a3358}
+  .pname > svg{color:var(--ink-dim); flex:0 0 auto}
+  .pname .ptext{
+    flex:1; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    font-size:12px; font-weight:700; letter-spacing:.04em;
+  }
+  .pname.modified .ptext{color:var(--ga)}
+  .pmenu{
+    position:absolute; top:31px; left:32px; right:32px; z-index:20; margin:0; padding:5px; list-style:none;
+    background:#171130; border:1px solid var(--bezel-edge); border-radius:9px;
+    max-height:180px; overflow:auto; box-shadow:0 16px 34px rgba(0,0,0,.65);
+  }
+  .pmenu li{
+    padding:7px 9px; border-radius:6px; font-size:12px; color:var(--ink-dim); cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .pmenu li:hover{background:#221a3e; color:var(--ink)}
+  .pmenu li.sel{color:var(--ga)}
+  .pmenu li .cat{font-size:8.5px; letter-spacing:.14em; color:var(--ink-faint)}
+
+  /* ============ KNOB ROW ============ */
+  .knobrow{
+    display:flex; align-items:flex-start; justify-content:space-around;
+    padding:8px 6px 6px; border-radius:14px; flex:0 0 auto;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 3px, transparent 3px 6px),
+      radial-gradient(120% 120% at 50% 0%, #14171a, #0d0f11 72%);
+    box-shadow:0 0 0 1px #000, 0 3px 6px rgba(0,0,0,.55) inset;
+  }
+  .knob{display:flex; flex-direction:column; align-items:center; gap:4px; cursor:ns-resize; touch-action:none}
+  .knob svg{width:46px; height:46px; display:block}
+  .knob .kname{font-size:8.5px; font-weight:800; letter-spacing:.16em; color:var(--ink-dim)}
+  .knob .kval{font-size:8.5px; font-family:var(--mono); color:var(--ink-faint); min-height:10px; font-variant-numeric:tabular-nums}
+  .knob:hover .kname{color:var(--ink)}
+  .knob.clutchk .kname{color:var(--ga)}
+
+  /* ============ SHIFTER MODULE ============ */
+  .shifter{
+    position:relative; flex:1; border-radius:14px; padding:10px; min-height:0;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 3px, transparent 3px 6px),
+      radial-gradient(120% 120% at 50% 0%, #14171a, #0d0f11 72%);
+    box-shadow:0 0 0 1px #000, 0 3px 6px rgba(0,0,0,.55) inset;
+    display:grid; place-items:center;
+  }
+  .glabel{position:absolute; text-align:center; cursor:pointer; user-select:none; line-height:1; transition:color .15s}
+  .glabel .g{font-weight:800; font-size:19px; color:#e9ecef}
+  .glabel .n{font-weight:800; font-size:9px; letter-spacing:.16em; color:var(--ink-faint); margin-top:5px}
+  .glabel:hover .n{color:var(--ink-dim)}
+  .glabel.active .g{color:var(--ga); text-shadow:0 0 14px color-mix(in srgb, var(--ga) 60%, transparent)}
+  .glabel.active .n{color:var(--ga)}
+  .g1{left:14px;  top:12px}
+  .g5{right:14px; top:12px}
+  .g2{left:14px;  bottom:12px}
+  .g4{left:50%;   bottom:12px; transform:translateX(-50%)}
+  .gR{right:14px; bottom:12px}
+
+  .plate-wrap{position:relative; width:min(72%,230px); aspect-ratio:1}
+  .plate{
+    position:absolute; inset:0; border-radius:50%;
+    background:
+      radial-gradient(120% 120% at 50% 18%, #ffffff 0%, #ededea 20%, #cfcfcc 46%, #a9a9a6 66%, #d8d8d5 82%, #bcbcb9 100%);
+    box-shadow:
+      0 0 0 2px #4a4266, 0 0 0 3px #1a1430,
+      0 10px 22px -6px rgba(0,0,0,.6),
+      0 1px 0 rgba(255,255,255,.7) inset;
+  }
+  .gate{position:absolute; inset:0; width:100%; height:100%; z-index:2}
+
+  .stick{
+    position:absolute; z-index:4; left:50%; top:23.3%; width:50px; height:50px;
+    transform:translate(-50%,-50%);
+    transition:left .34s cubic-bezier(.34,1.42,.5,1), top .34s cubic-bezier(.34,1.42,.5,1);
+    will-change:left,top;
+  }
+  .knobstick{
+    position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle at 38% 30%, #2a2245, #171130 60%, #0d0a1a 100%);
+    box-shadow:
+      0 6px 14px rgba(0,0,0,.6),
+      0 0 0 2px color-mix(in srgb, var(--ga) 75%, #0d0a1a),
+      0 0 16px color-mix(in srgb, var(--ga) 42%, transparent),
+      0 1px 0 rgba(255,255,255,.14) inset;
+    display:grid; place-items:center; cursor:grab; outline:none;
+    transition:box-shadow .3s;
+  }
+  .knobstick:active{cursor:grabbing}
+  .knobstick:focus-visible{
+    box-shadow:0 6px 14px rgba(0,0,0,.6), 0 0 0 3px var(--ga), 0 0 18px color-mix(in srgb, var(--ga) 60%, transparent);
+  }
+  .knobstick .diagram{width:32px; height:auto; color:var(--ga); transition:color .3s}
+  .knobstick .lbl-top,.knobstick .lbl-bot{position:absolute; font-size:6.5px; letter-spacing:.12em; color:var(--ink-dim); font-weight:700}
+  .knobstick .lbl-top{top:7px} .knobstick .lbl-bot{bottom:7px}
+
+  @media (prefers-reduced-motion:reduce){
+    .stick{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="device" role="application" aria-label="OCTANE saturation gearbox">
+
+  <div class="titlebar">
+    <span class="led" aria-hidden="true"></span>
+    <span class="brand">OCTANE</span>
+    <button class="sizebtn" id="sizebtn" title="UI scale" aria-label="Cycle interface scale">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      <span id="sizeval">100%</span>
+    </button>
+    <span class="note" aria-hidden="true">&#9834;</span>
+  </div>
+
+  <!-- DISPLAY -->
+  <div class="display">
+    <div class="gauges">
+      <div class="tach" aria-hidden="true">
+        <svg viewBox="0 0 150 96">
+          <path d="M14 82 A61 61 0 0 1 136 82" fill="none" stroke="#2b3036" stroke-width="7" stroke-linecap="round"/>
+          <path id="redarc" fill="none" stroke="var(--redline)" stroke-width="7" stroke-linecap="round"/>
+          <g id="ticks" stroke="#c7ccd1" stroke-width="1.6"></g>
+          <g id="nums" fill="#aeb4ba" font-size="8" font-family="Helvetica,Arial" text-anchor="middle"></g>
+          <g id="needle"><line x1="75" y1="82" x2="75" y2="30" stroke="#f4f6f7" stroke-width="2.4" stroke-linecap="round"/></g>
+          <circle cx="75" cy="82" r="4.5" fill="#e9ecef" stroke="#0a0d11" stroke-width="1"/>
+        </svg>
+        <div class="cap">RPM &times;1000</div>
+      </div>
+      <div class="readout">
+        <div class="gearnum" id="gearnum">3</div>
+        <div class="flavor" id="flavor">CONSOLE</div>
+      </div>
+    </div>
+
+    <!-- preset browser -->
+    <div class="preset">
+      <button class="pbtn" id="pprev" aria-label="Previous preset">&#8249;</button>
+      <button class="pname" id="pname" aria-haspopup="listbox" aria-expanded="false">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="ptext" id="ptext">Init</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <button class="pbtn" id="pnext" aria-label="Next preset">&#8250;</button>
+      <ul class="pmenu" id="pmenu" role="listbox" aria-label="Presets" hidden></ul>
+    </div>
+  </div>
+
+  <!-- KNOB ROW -->
+  <div class="knobrow" id="knobrow"></div>
+
+  <!-- SHIFTER -->
+  <div class="shifter">
+    <div class="glabel g1" data-gear="0"><div class="g">1</div><div class="n">TAPE</div></div>
+    <div class="glabel g5" data-gear="4"><div class="g">5</div><div class="n">FUZZ</div></div>
+    <div class="glabel g2" data-gear="1"><div class="g">2</div><div class="n">TUBE</div></div>
+    <div class="glabel g4" data-gear="3"><div class="g">4</div><div class="n">CLIP</div></div>
+    <div class="glabel gR" data-gear="5"><div class="g">R</div><div class="n">CLEAN</div></div>
+
+    <div class="plate-wrap">
+      <div class="plate"></div>
+      <svg class="gate" viewBox="0 0 300 300" aria-hidden="true">
+        <g fill="var(--gate)">
+          <rect x="79"  y="70" width="24" height="160" rx="12"/>
+          <rect x="138" y="70" width="24" height="160" rx="12"/>
+          <rect x="197" y="70" width="24" height="160" rx="12"/>
+          <rect x="79"  y="138" width="142" height="24" rx="12"/>
+        </g>
+      </svg>
+      <div class="stick" id="stick">
+        <div class="knobstick" tabindex="0" role="slider" aria-label="Gear selector" aria-valuetext="Gear 3, Console">
+          <div class="lbl-top">1&nbsp;&nbsp;3&nbsp;&nbsp;5</div>
+          <svg class="diagram" viewBox="0 0 40 30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <line x1="8" y1="6" x2="8" y2="24"/><line x1="20" y1="6" x2="20" y2="24"/>
+            <line x1="32" y1="6" x2="32" y2="24"/><line x1="8" y1="15" x2="32" y2="15"/>
+          </svg>
+          <div class="lbl-bot">2&nbsp;&nbsp;4&nbsp;&nbsp;R</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ======================================================================
+   OCTANE UI — JUCE 8 WebView wiring with a browser-dev fallback.
+   Param model (matches APVTS):
+     gear   choice 0..5  (0=Tape … 4=Fuzz, 5=R Clean)
+     clutch 0..1 | drive 0..10 | tone -1..1 | mix 0..1 | output -12..+12 dB
+   ====================================================================== */
+
+let Juce = null;
+if (window.__JUCE__) {
+  try { Juce = await import("./juce/index.js"); }
+  catch (e) { console.error("JUCE frontend lib failed to load — falling back to local state", e); }
+}
+const IN_JUCE = !!Juce;
+
+// ---- parameter state abstraction (JUCE relay or local mock) ----
+function makeState(name, lo, hi, def){
+  if (IN_JUCE){
+    const s = Juce.getSliderState(name);
+    return {
+      get: () => s.getScaledValue(),
+      set: (v) => s.setNormalisedValue((v - lo) / (hi - lo)),
+      onChange: (fn) => s.valueChangedEvent.addListener(fn),
+      dragStart: () => s.sliderDragStarted(),
+      dragEnd: () => s.sliderDragEnded(),
+    };
+  }
+  let val = def; const ls = [];
+  return {
+    get: () => val,
+    set: (v) => { val = Math.min(hi, Math.max(lo, v)); ls.forEach(f => f()); },
+    onChange: (fn) => ls.push(fn),
+    dragStart(){}, dragEnd(){},
+  };
+}
+
+const P = {
+  gear:   makeState("gear",   0, 5,  2),
+  clutch: makeState("clutch", 0, 1,  0),
+  drive:  makeState("drive",  0, 10, 3),
+  tone:   makeState("tone",  -1, 1,  0),
+  mix:    makeState("mix",    0, 1,  1),
+  output: makeState("output",-12, 12, 0),
+};
+
+// ---- gear visuals ----
+const GEARS = [
+  {num:"1", name:"TAPE",    ga:"#00d4ff", idle:1.6},
+  {num:"2", name:"TUBE",    ga:"#ff8c42", idle:2.9},
+  {num:"3", name:"CONSOLE", ga:"#ffd700", idle:4.3},
+  {num:"4", name:"CLIP",    ga:"#ff3366", idle:5.9},
+  {num:"5", name:"FUZZ",    ga:"#cc33ff", idle:7.4},
+  {num:"R", name:"CLEAN",   ga:"#ffffff", idle:0.5},
+];
+const POS = { 0:[91,70], 1:[91,230], 2:[150,70], 3:[150,230], 4:[209,70], 5:[209,230] };
+
+const device  = document.querySelector('.device');
+const stick   = document.getElementById('stick');
+const gearnum = document.getElementById('gearnum');
+const flavor  = document.getElementById('flavor');
+const needleG = document.getElementById('needle');
+const knobEl  = document.querySelector('.knobstick');
+
+// ---- tach static geometry ----
+const ang = v => 180 - (180 * (v / 8));
+(function tachStatic(){
+  const cx=75, cy=82, R=61;
+  const pt = (v,r) => { const a = ang(v)*Math.PI/180; return [cx + r*Math.cos(a), cy - r*Math.sin(a)]; };
+  const ticks = document.getElementById('ticks'), nums = document.getElementById('nums');
+  for (let v=0; v<=8; v++){
+    const o = pt(v,R), i = pt(v, v>=6 ? R-9 : R-6);
+    const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('x1',i[0].toFixed(1)); ln.setAttribute('y1',i[1].toFixed(1));
+    ln.setAttribute('x2',o[0].toFixed(1)); ln.setAttribute('y2',o[1].toFixed(1));
+    if (v>=6) ln.setAttribute('stroke','var(--redline)');
+    ticks.appendChild(ln);
+    const np = pt(v,R-16);
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',np[0].toFixed(1)); t.setAttribute('y',(np[1]+3).toFixed(1));
+    t.textContent = v; nums.appendChild(t);
+  }
+  const s = pt(6,R), e = pt(8,R);
+  document.getElementById('redarc').setAttribute('d',
+    `M${s[0].toFixed(1)} ${s[1].toFixed(1)} A${R} ${R} 0 0 1 ${e[0].toFixed(1)} ${e[1].toFixed(1)}`);
+})();
+
+// ---- tach animation: real input level (JUCE event) with per-gear idle ----
+let latestPeak = 0, needleRpm = 0;
+if (IN_JUCE)
+  window.__JUCE__.backend.addEventListener("levelUpdate", v => { latestPeak = Number(v) || 0; });
+
+function tachLoop(){
+  const g = Math.round(P.gear.get());
+  const idle = (GEARS[g] || GEARS[2]).idle * 0.25;
+  let target = idle;
+  if (latestPeak > 0.0006){
+    const db = 20 * Math.log10(latestPeak);
+    target = Math.max(idle, Math.min(8, (db + 48) / 48 * 7.6));
+  }
+  needleRpm += (target - needleRpm) * 0.25;
+  const rot = 90 - ang(needleRpm);
+  needleG.style.transform = `rotate(${rot}deg)`;
+  needleG.style.transformOrigin = '75px 82px';
+  requestAnimationFrame(tachLoop);
+}
+requestAnimationFrame(tachLoop);
+
+// ---- gear UI ----
+function renderGear(){
+  const idx = Math.round(P.gear.get());
+  const g = GEARS[idx] || GEARS[2];
+  device.style.setProperty('--ga', g.ga);
+  gearnum.textContent = g.num;
+  flavor.textContent  = g.name;
+  document.querySelectorAll('.glabel').forEach(el =>
+    el.classList.toggle('active', Number(el.dataset.gear) === idx));
+  knobEl.setAttribute('aria-valuetext', `Gear ${g.num}, ${g.name}`);
+  const p = POS[idx] || POS[2];
+  stick.style.left = (p[0]/300*100) + '%';
+  stick.style.top  = (p[1]/300*100) + '%';
+}
+P.gear.onChange(() => { renderGear(); markModified(); });
+
+document.querySelectorAll('.glabel').forEach(el =>
+  el.addEventListener('click', () => P.gear.set(Number(el.dataset.gear))));
+
+knobEl.addEventListener('keydown', e => {
+  const idx = Math.round(P.gear.get());
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp'){ e.preventDefault(); P.gear.set(Math.min(4, idx + 1)); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown'){ e.preventDefault(); P.gear.set(Math.max(0, idx - 1)); }
+  if (e.key.toLowerCase() === 'r'){ e.preventDefault(); P.gear.set(5); }
+});
+
+// drag stick to nearest slot
+const wrap = document.querySelector('.plate-wrap');
+let draggingStick = false;
+function pickSlot(e){
+  const r = wrap.getBoundingClientRect();
+  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  let best = 2, bd = 1e9;
+  for (const k of Object.keys(POS)){
+    const p = POS[k], px = p[0]/300*r.width, py = p[1]/300*r.height;
+    const d = (px-cx)**2 + (py-cy)**2;
+    if (d < bd){ bd = d; best = Number(k); }
+  }
+  return best;
+}
+knobEl.addEventListener('pointerdown', e => { draggingStick = true; knobEl.setPointerCapture(e.pointerId); });
+knobEl.addEventListener('pointermove', e => {
+  if (!draggingStick) return;
+  const g = pickSlot(e);
+  if (g !== Math.round(P.gear.get())) P.gear.set(g);
+});
+knobEl.addEventListener('pointerup', () => { draggingStick = false; });
+
+// ---- knob row ----
+const KNOBS = [
+  {id:'drive',  name:'DRIVE',  lo:0,   hi:10, def:3, fmt:v => v.toFixed(1)},
+  {id:'clutch', name:'CLUTCH', lo:0,   hi:1,  def:0, fmt:v => v.toFixed(2), cls:'clutchk'},
+  {id:'tone',   name:'TONE',   lo:-1,  hi:1,  def:0, fmt:v => (v>0?'+':'') + v.toFixed(2)},
+  {id:'mix',    name:'MIX',    lo:0,   hi:1,  def:1, fmt:v => Math.round(v*100) + '%'},
+  {id:'output', name:'OUT',    lo:-12, hi:12, def:0, fmt:v => (v>0?'+':'') + v.toFixed(1)},
+];
+const knobrow = document.getElementById('knobrow');
+
+function makeKnob(cfg){
+  const el = document.createElement('div');
+  el.className = 'knob' + (cfg.cls ? ' ' + cfg.cls : '');
+  el.innerHTML = `
+    <svg viewBox="0 0 46 46">
+      <circle cx="23" cy="23" r="20" fill="none" stroke="#221a3e" stroke-width="4"/>
+      <path class="arc" fill="none" stroke="var(--ga)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="23" cy="23" r="13" fill="#171130" stroke="#0a0715" stroke-width="1"/>
+      <line class="ptr" x1="23" y1="23" x2="23" y2="12" stroke="#e9ecef" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <div class="kname">${cfg.name}</div>
+    <div class="kval"></div>`;
+  knobrow.appendChild(el);
+
+  const arc = el.querySelector('.arc'), ptr = el.querySelector('.ptr'), kval = el.querySelector('.kval');
+  const A0 = -135, A1 = 135;
+  const polar = (deg, r) => {
+    const a = (deg - 90) * Math.PI/180;
+    return [23 + r*Math.cos(a), 23 + r*Math.sin(a)];
+  };
+  function draw(){
+    const v = P[cfg.id].get();
+    const n = (v - cfg.lo) / (cfg.hi - cfg.lo);
+    const deg = A0 + (A1 - A0) * n;
+    const [sx, sy] = polar(A0, 20), [ex, ey] = polar(deg, 20);
+    const large = (deg - A0) > 180 ? 1 : 0;
+    arc.setAttribute('d', `M${sx.toFixed(1)} ${sy.toFixed(1)} A20 20 0 ${large} 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`);
+    ptr.setAttribute('transform', `rotate(${deg} 23 23)`);
+    kval.textContent = cfg.fmt(v);
+  }
+  P[cfg.id].onChange(() => { draw(); markModified(); });
+  draw();
+
+  let dragging = false, startY = 0, startV = 0;
+  el.addEventListener('pointerdown', e => {
+    dragging = true; startY = e.clientY; startV = P[cfg.id].get();
+    el.setPointerCapture(e.pointerId); P[cfg.id].dragStart();
+  });
+  el.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const range = cfg.hi - cfg.lo;
+    const fine = e.shiftKey ? 0.2 : 1;
+    P[cfg.id].set(startV + (startY - e.clientY) / 150 * range * fine);
+  });
+  el.addEventListener('pointerup', () => { dragging = false; P[cfg.id].dragEnd(); });
+  el.addEventListener('dblclick', () => P[cfg.id].set(cfg.def));
+}
+KNOBS.forEach(makeKnob);
+
+// ---- presets (UI quick-recall; full state lives in DAW sessions) ----
+const PRESETS = [
+  {name:"Init",          cat:"FACTORY", v:{gear:2, clutch:0.00, drive:3.0, tone: 0.00, mix:1.00, output:0}},
+  {name:"Vocal Glue",    cat:"VOCAL",   v:{gear:1, clutch:0.30, drive:2.5, tone: 0.10, mix:0.75, output:0}},
+  {name:"Console Punch", cat:"BUS",     v:{gear:2, clutch:0.50, drive:4.0, tone: 0.15, mix:1.00, output:0}},
+  {name:"Drum Smash",    cat:"DRUMS",   v:{gear:3, clutch:0.60, drive:6.0, tone: 0.20, mix:0.65, output:-1}},
+  {name:"Bass Grit",     cat:"BASS",    v:{gear:4, clutch:0.20, drive:4.5, tone:-0.25, mix:0.55, output:0}},
+  {name:"Tape Warmth",   cat:"MASTER",  v:{gear:0, clutch:0.40, drive:2.0, tone:-0.05, mix:1.00, output:0}},
+  {name:"Lo-Fi Crush",   cat:"FX",      v:{gear:3, clutch:0.90, drive:8.0, tone:-0.40, mix:1.00, output:-2}},
+  {name:"Clean A/B",     cat:"UTILITY", v:{gear:5, clutch:0.00, drive:3.0, tone: 0.00, mix:1.00, output:0}},
+];
+let presetIdx = 0, modified = false, applying = false;
+const ptext = document.getElementById('ptext');
+const pname = document.getElementById('pname');
+const pmenu = document.getElementById('pmenu');
+
+function markModified(){
+  if (applying) return;
+  modified = true;
+  ptext.textContent = PRESETS[presetIdx].name + " *";
+  pname.classList.add('modified');
+}
+function applyPreset(i){
+  presetIdx = (i + PRESETS.length) % PRESETS.length;
+  const pr = PRESETS[presetIdx];
+  applying = true;
+  for (const k of Object.keys(pr.v)) P[k].set(pr.v[k]);
+  applying = false;
+  modified = false;
+  ptext.textContent = pr.name;
+  pname.classList.remove('modified');
+  renderGear();
+}
+function buildMenu(){
+  pmenu.innerHTML = "";
+  PRESETS.forEach((pr, i) => {
+    const li = document.createElement('li');
+    li.setAttribute('role','option');
+    if (i === presetIdx) li.className = 'sel';
+    li.innerHTML = `<span>${pr.name}</span><span class="cat">${pr.cat}</span>`;
+    li.addEventListener('click', e => { e.stopPropagation(); applyPreset(i); closeMenu(); });
+    pmenu.appendChild(li);
+  });
+}
+const openMenu  = () => { buildMenu(); pmenu.hidden = false; pname.setAttribute('aria-expanded','true'); };
+const closeMenu = () => { pmenu.hidden = true; pname.setAttribute('aria-expanded','false'); };
+pname.addEventListener('click', e => { e.stopPropagation(); pmenu.hidden ? openMenu() : closeMenu(); });
+document.getElementById('pprev').addEventListener('click', () => applyPreset(presetIdx - 1));
+document.getElementById('pnext').addEventListener('click', () => applyPreset(presetIdx + 1));
+document.addEventListener('click', () => { if (!pmenu.hidden) closeMenu(); });
+
+// ---- UI scale (native window resize + CSS zoom; JUCE-safe, no transform) ----
+const SCALES = [0.75, 1.0, 1.25, 1.5];
+const sizeval = document.getElementById('sizeval');
+let scaleIdx = 1;
+
+async function applyScaleFromNative(){
+  if (!IN_JUCE) return;
+  try {
+    const s = await Juce.getNativeFunction("getUIScale")();
+    const i = SCALES.indexOf(Number(s));
+    if (i >= 0) scaleIdx = i;
+  } catch (e) { /* keep default */ }
+  document.body.style.zoom = SCALES[scaleIdx];
+  sizeval.textContent = Math.round(SCALES[scaleIdx] * 100) + '%';
+}
+document.getElementById('sizebtn').addEventListener('click', async () => {
+  scaleIdx = (scaleIdx + 1) % SCALES.length;
+  const s = SCALES[scaleIdx];
+  if (IN_JUCE){
+    try { await Juce.getNativeFunction("setUIScale")(s); } catch (e) {}
+  }
+  document.body.style.zoom = s;
+  sizeval.textContent = Math.round(s * 100) + '%';
+});
+
+// ---- boot ----
+applyScaleFromNative();
+// Sync initial values (relay properties/values arrive asynchronously)
+setTimeout(() => { renderGear(); modified = false; ptext.textContent = PRESETS[0].name; pname.classList.remove('modified'); }, 120);
+renderGear();
+</script>
+</body>
+</html>

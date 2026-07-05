@@ -1,0 +1,14 @@
+# Vendored locally, cloned by CI (pinned 8.0.12 in the workflow)
+/JUCE/
+
+# Build output
+/build*/
+/dist/
+*.o
+*.a
+
+# macOS
+.DS_Store
+
+# Generated demo installer script (CI derives it from octane.iss)
+installer/windows/octane-demo.iss
