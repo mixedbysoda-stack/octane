@@ -6,7 +6,7 @@
 #include "../Licensing/ActivationDialog.h"
 
 /*
-    OCTANE editor — JUCE 8 WebView hosting the single-file gearbox UI.
+    FIZZFUEL editor — JUCE 8 WebView hosting the single-file gearbox UI.
 
     Licensing gate: on paid builds that aren't activated yet, the editor shows
     the native ActivationDialog INSTEAD of the webview (a native WKWebView /

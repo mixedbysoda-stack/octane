@@ -20,7 +20,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override                        { return true; }
 
-    const juce::String getName() const override            { return "OCTANE"; }
+    const juce::String getName() const override            { return "FIZZFUEL"; }
     bool acceptsMidi() const override                      { return false; }
     bool producesMidi() const override                     { return false; }
     bool isMidiEffect() const override                     { return false; }
@@ -35,7 +35,7 @@ public:
     void getStateInformation (juce::MemoryBlock&) override;
     void setStateInformation (const void*, int) override;
 
-    // ---- OCTANE ----
+    // ---- FIZZFUEL ----
     juce::AudioProcessorValueTreeState& getAPVTS()         { return apvts; }
     LicenseManager& getLicenseManager()                    { return licenseManager; }
     float getInputLevel() const                            { return inputLevel.load (std::memory_order_relaxed); }

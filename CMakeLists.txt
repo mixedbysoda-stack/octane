@@ -61,7 +61,7 @@ juce_add_plugin(Octane
     PLUGIN_MANUFACTURER_CODE CbAu
     PLUGIN_CODE Octn
     FORMATS ${FORMATS}
-    PRODUCT_NAME "OCTANE"
+    PRODUCT_NAME "FIZZFUEL"
     BUNDLE_ID "com.carbonatedaudio.octane"
 
     IS_SYNTH FALSE

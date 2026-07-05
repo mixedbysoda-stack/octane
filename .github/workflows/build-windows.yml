@@ -41,16 +41,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/Windows/VST3 dist/Windows/Standalone
-          cp -r "build/Octane_artefacts/Release/VST3/OCTANE.vst3" dist/Windows/VST3/ || true
-          cp "build/Octane_artefacts/Release/Standalone/OCTANE.exe" dist/Windows/Standalone/ || true
+          cp -r "build/Octane_artefacts/Release/VST3/FIZZFUEL.vst3" dist/Windows/VST3/ || true
+          cp "build/Octane_artefacts/Release/Standalone/FIZZFUEL.exe" dist/Windows/Standalone/ || true
 
       - name: Update Inno Setup version (paid)
         shell: bash
         run: |
           VERSION=${{ steps.version.outputs.version }}
           sed -i "s/AppVersion=.*/AppVersion=$VERSION/" installer/windows/octane.iss
-          sed -i "s/AppVerName=.*/AppVerName=OCTANE v$VERSION/" installer/windows/octane.iss
-          sed -i "s/OutputBaseFilename=.*/OutputBaseFilename=OCTANE-v$VERSION-Windows-Installer/" installer/windows/octane.iss
+          sed -i "s/AppVerName=.*/AppVerName=FIZZFUEL v$VERSION/" installer/windows/octane.iss
+          sed -i "s/OutputBaseFilename=.*/OutputBaseFilename=FIZZFUEL-v$VERSION-Windows-Installer/" installer/windows/octane.iss
 
       - name: Build Installer (paid)
         shell: cmd
@@ -68,8 +68,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/Windows-Demo/VST3 dist/Windows-Demo/Standalone
-          cp -r "build-demo/Octane_artefacts/Release/VST3/OCTANE.vst3" dist/Windows-Demo/VST3/ || true
-          cp "build-demo/Octane_artefacts/Release/Standalone/OCTANE.exe" dist/Windows-Demo/Standalone/ || true
+          cp -r "build-demo/Octane_artefacts/Release/VST3/FIZZFUEL.vst3" dist/Windows-Demo/VST3/ || true
+          cp "build-demo/Octane_artefacts/Release/Standalone/FIZZFUEL.exe" dist/Windows-Demo/Standalone/ || true
 
       - name: Build Demo Installer
         shell: bash
@@ -78,9 +78,9 @@ jobs:
           cp installer/windows/octane.iss installer/windows/octane-demo.iss
           sed -i "s|dist\\\\Windows\\\\VST3|dist\\\\Windows-Demo\\\\VST3|g" installer/windows/octane-demo.iss
           sed -i "s|dist\\\\Windows\\\\Standalone|dist\\\\Windows-Demo\\\\Standalone|g" installer/windows/octane-demo.iss
-          sed -i "s|AppName=OCTANE|AppName=OCTANE Demo|" installer/windows/octane-demo.iss
-          sed -i "s|DefaultDirName={autopf}\\\\Carbonated Audio\\\\OCTANE|DefaultDirName={autopf}\\\\Carbonated Audio\\\\OCTANE Demo|" installer/windows/octane-demo.iss
-          sed -i "s/OutputBaseFilename=.*/OutputBaseFilename=OCTANE-v$VERSION-Demo-Windows-Installer/" installer/windows/octane-demo.iss
+          sed -i "s|AppName=FIZZFUEL|AppName=FIZZFUEL Demo|" installer/windows/octane-demo.iss
+          sed -i "s|DefaultDirName={autopf}\\\\Carbonated Audio\\\\FIZZFUEL|DefaultDirName={autopf}\\\\Carbonated Audio\\\\FIZZFUEL Demo|" installer/windows/octane-demo.iss
+          sed -i "s/OutputBaseFilename=.*/OutputBaseFilename=FIZZFUEL-v$VERSION-Demo-Windows-Installer/" installer/windows/octane-demo.iss
 
       - name: Build Demo Installer (Inno)
         shell: cmd
@@ -91,39 +91,39 @@ jobs:
       - name: Upload paid VST3
         uses: actions/upload-artifact@v4
         with:
-          name: OCTANE-Windows-VST3
+          name: FIZZFUEL-Windows-VST3
           path: dist/Windows/VST3/
 
       - name: Upload paid Installer
         uses: actions/upload-artifact@v4
         with:
-          name: OCTANE-Windows-Installer
-          path: dist/Windows/Installer/OCTANE-v*-Windows-Installer.exe
+          name: FIZZFUEL-Windows-Installer
+          path: dist/Windows/Installer/FIZZFUEL-v*-Windows-Installer.exe
 
       - name: Upload demo Installer
         uses: actions/upload-artifact@v4
         with:
-          name: OCTANE-Demo-Windows-Installer
-          path: dist/Windows/Installer/OCTANE-v*-Demo-Windows-Installer.exe
+          name: FIZZFUEL-Demo-Windows-Installer
+          path: dist/Windows/Installer/FIZZFUEL-v*-Demo-Windows-Installer.exe
 
       # ---------- RELEASE ----------
       - name: Zip paid artifacts
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
-          cd dist/Windows && 7z a -tzip ../../OCTANE-Windows.zip VST3/ Standalone/
+          cd dist/Windows && 7z a -tzip ../../FIZZFUEL-Windows.zip VST3/ Standalone/
 
       - name: Upload paid Release (non-demo tags)
         if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'demo')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            OCTANE-Windows.zip
-            dist/Windows/Installer/OCTANE-v*-Windows-Installer.exe
+            FIZZFUEL-Windows.zip
+            dist/Windows/Installer/FIZZFUEL-v*-Windows-Installer.exe
 
       - name: Upload demo Release (demo tags)
         if: contains(github.ref, 'demo')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/Windows/Installer/OCTANE-v*-Demo-Windows-Installer.exe
+            dist/Windows/Installer/FIZZFUEL-v*-Demo-Windows-Installer.exe

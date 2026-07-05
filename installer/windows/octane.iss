@@ -1,13 +1,13 @@
 [Setup]
-AppName=OCTANE
+AppName=FIZZFUEL
 AppVersion=1.0.0
-AppVerName=OCTANE v1.0.0
+AppVerName=FIZZFUEL v1.0.0
 AppPublisher=Carbonated Audio
 AppPublisherURL=https://carbonatedaudio.com
-DefaultDirName={autopf}\Carbonated Audio\OCTANE
+DefaultDirName={autopf}\Carbonated Audio\FIZZFUEL
 DefaultGroupName=Carbonated Audio
 OutputDir=..\..\dist\Windows\Installer
-OutputBaseFilename=OCTANE-v1.0.0-Windows-Installer
+OutputBaseFilename=FIZZFUEL-v1.0.0-Windows-Installer
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -16,14 +16,14 @@ PrivilegesRequired=admin
 
 [Files]
 ; VST3
-Source: "..\..\dist\Windows\VST3\OCTANE.vst3\*"; DestDir: "{commoncf64}\VST3\OCTANE.vst3"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\dist\Windows\VST3\FIZZFUEL.vst3\*"; DestDir: "{commoncf64}\VST3\FIZZFUEL.vst3"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Standalone
-Source: "..\..\dist\Windows\Standalone\OCTANE.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\dist\Windows\Standalone\FIZZFUEL.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\OCTANE"; Filename: "{app}\OCTANE.exe"
-Name: "{group}\Uninstall OCTANE"; Filename: "{uninstallexe}"
+Name: "{group}\FIZZFUEL"; Filename: "{app}\FIZZFUEL.exe"
+Name: "{group}\Uninstall FIZZFUEL"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\OCTANE.exe"; Description: "Launch OCTANE"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\FIZZFUEL.exe"; Description: "Launch FIZZFUEL"; Flags: nowait postinstall skipifsilent

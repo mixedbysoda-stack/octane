@@ -2,12 +2,12 @@
 
 ActivationDialog::ActivationDialog(LicenseManager& lm)
     : licenseManager(lm),
-      buyLink ("Buy OCTANE",   juce::URL("https://carbonatedaudio.com/octane")),
+      buyLink ("Buy FIZZFUEL", juce::URL("https://carbonatedaudio.com/fizzfuel")),
       helpLink("Need help?",   juce::URL("mailto:mixedbysoda@gmail.com"))
 {
     setInterceptsMouseClicks(true, true);
 
-    titleLabel.setText("Activate OCTANE", juce::dontSendNotification);
+    titleLabel.setText("Activate FIZZFUEL", juce::dontSendNotification);
     titleLabel.setFont(juce::FontOptions(24.0f));
     titleLabel.setJustificationType(juce::Justification::centred);
     titleLabel.setColour(juce::Label::textColourId, juce::Colours::white);

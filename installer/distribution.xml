@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1">
-    <title>Install OCTANE</title>
+    <title>Install FIZZFUEL</title>
     <welcome    file="welcome.html"/>
     <license    file="license.html"/>
     <conclusion file="conclusion.html"/>
@@ -21,7 +21,7 @@
     <choice id="com.carbonatedaudio.octane.vst3.pkg" visible="false"><pkg-ref id="com.carbonatedaudio.octane.vst3.pkg"/></choice>
     <choice id="com.carbonatedaudio.octane.au.pkg"   visible="false"><pkg-ref id="com.carbonatedaudio.octane.au.pkg"/></choice>
     <choice id="com.carbonatedaudio.octane.aax.pkg"  visible="false"><pkg-ref id="com.carbonatedaudio.octane.aax.pkg"/></choice>
-    <pkg-ref id="com.carbonatedaudio.octane.vst3.pkg" version="1.0.0" onConclusion="none">OCTANE-VST3.pkg</pkg-ref>
-    <pkg-ref id="com.carbonatedaudio.octane.au.pkg"   version="1.0.0" onConclusion="none">OCTANE-AU.pkg</pkg-ref>
-    <pkg-ref id="com.carbonatedaudio.octane.aax.pkg"  version="1.0.0" onConclusion="none">OCTANE-AAX.pkg</pkg-ref>
+    <pkg-ref id="com.carbonatedaudio.octane.vst3.pkg" version="1.0.0" onConclusion="none">FIZZFUEL-VST3.pkg</pkg-ref>
+    <pkg-ref id="com.carbonatedaudio.octane.au.pkg"   version="1.0.0" onConclusion="none">FIZZFUEL-AU.pkg</pkg-ref>
+    <pkg-ref id="com.carbonatedaudio.octane.aax.pkg"  version="1.0.0" onConclusion="none">FIZZFUEL-AAX.pkg</pkg-ref>
 </installer-gui-script>

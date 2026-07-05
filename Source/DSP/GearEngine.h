@@ -6,7 +6,7 @@
 #include <cmath>
 
 /*
-    GearEngine — OCTANE's morphing 5-circuit saturation core.
+    GearEngine — FIZZFUEL's morphing 5-circuit saturation core.
 
     Architecture: ONE parameterized nonlinear circuit whose coefficients are
     interpolated between per-gear tables (true morph, not parallel blend).
