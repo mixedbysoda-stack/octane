@@ -150,3 +150,31 @@ Rationale: pitch + reverb are the two hardest engines; shipping Drive/Filter/Del
 - Parallel/simultaneous effects (rack mode) — explicitly a selector; revisit if demand.
 - Modulation matrix, LFOs beyond what an effect needs internally.
 - Per-effect independent wet chains.
+
+---
+
+## 9. Engineering standard — pro decisions LOCKED (2026-07-05)
+
+Built to flagship standard (FabFilter / Soundtoys / UAD bar). Decisions made, not deferred:
+
+- **Latency: FIXED, always.** The plugin always reports one constant latency = the max of all engines (set by the Pitch engine's block size). Every other engine is padded with a compensating dry delay so its total latency equals that max. Result: **PDC never changes when you switch gears** — no host glitch, ever. (A "Low-Latency" mode that drops Pitch can come later as an option.)
+- **Crossfade on gear switch:** equal-power ~15 ms crossfade; both old and new engine keep running through the fade so reverb/delay **tails ring out** instead of cutting. Because all engines are latency-aligned, the crossfade is sample-accurate.
+- **Styles: curated, reference-grade, quality > quantity.** 4 for Drive (Tape/Tube/Console/Clip/Fuzz → curated to 4-5 excellent), 3-4 each for the rest, every style tuned to a named target character. No filler styles.
+- **Reverb = real FDN**, not Freeverb. 8-line Feedback Delay Network with a Hadamard mixing matrix, per-line damping + modulation; a Dattorro plate topology for the Plate style. (Freeverb only as a scaffolding stub during bring-up, replaced before ship.)
+- **Pitch = Signalsmith Stretch** (MIT, WSOLA/phase-vocoder grade; already vetted in Dispenser), latency reported into the fixed-latency budget.
+- **DSP discipline (non-negotiable, every engine):** full `SmoothedValue` parameter smoothing (zero zipper noise); `ScopedNoDenormals` + explicit denormal flushing in feedback paths; true-stereo processing; oversampling where non-linear (Drive 8×, hard-clip styles up to 16×); coefficient updates rate-limited off the audio thread where possible.
+- **Verification gates (CI harness, every engine, every build):**
+  1. **Idle silence** — silence in → < −140 dBFS out (the v1 DC lesson, enforced).
+  2. **Null/bypass** — Mix = 0 is bit-transparent (within dither).
+  3. **Latency** — reported == measured (impulse test).
+  4. **No NaN/Inf** under parameter sweeps + extreme settings.
+  5. **THD sanity** for Drive; **RT60** sanity for Reverb; **grid-lock** for Delay sync.
+- **Metering/viz:** per-effect tach readout with correct units; a small live activity/response viz per effect (Phase 2 polish).
+
+### Decision on the two open questions
+1. Latency → **fixed max** (above).
+2. Style count → **curated 4 per effect**, each held to the reference-quality bar; cut to 3 only if one doesn't earn its place.
+
+### Build order (locked)
+- **v2.0 (this cycle):** `Effect` spine + latency-aligned router + crossfade → **Drive** (8×, warmer, styles-in-gear) → **Filter/EQ** → **Delay** → UI knob-remap + style selector → full CI harness.
+- **v2.1:** **Reverb** (FDN) → **Pitch** (Signalsmith) → per-effect viz.
