@@ -158,6 +158,16 @@ public:
         const float k        = 1.0f + 9.0f * std::pow (g.hardness, 1.5f);
         const float bias     = clean ? 0.0f : g.bias;
         const float fold     = clean ? 0.0f : g.fold;
+
+        // The bias term intentionally offsets the waveshaper input to make even
+        // harmonics — but at idle (silence in) that leaves a constant DC pedestal
+        // of tanh(k·bias)/tanh(k) at the output. Relying on the post DC-blocker to
+        // remove it only kills ~half and lights the meter at standby. Subtract the
+        // exact pedestal here so silence maps to true zero; the DC blocker then only
+        // has to mop up the tiny signal-dependent asymmetry DC.
+        const float dcPedestal = clean ? 0.0f
+            : (1.0f - fold) * (std::tanh (k * bias) / std::tanh (k))
+              + fold * std::sin (4.7f * bias);
         const int   osChans  = (int) osBlock.getNumChannels();
         const int   osLen    = (int) osBlock.getNumSamples();
 
@@ -183,7 +193,8 @@ public:
                     if (fold > 0.0001f)
                         y = (1.0f - fold) * y
                           + fold * std::sin (4.7f * juce::jlimit (-1.2f, 1.2f, x));
-                    y = dcF.processSample (y);       // strip bias DC
+                    y -= dcPedestal;                 // remove the bias DC pedestal analytically
+                    y = dcF.processSample (y);       // safety net for signal-dependent asymmetry DC
                 }
                 data[i] = y;
             }

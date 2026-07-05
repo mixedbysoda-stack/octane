@@ -119,6 +119,17 @@ target_include_directories(Octane
         Source
 )
 
+option(BUILD_IDLE_TEST "Build the idle-noise measurement harness" OFF)
+if(BUILD_IDLE_TEST)
+    juce_add_console_app(idle_test PRODUCT_NAME "idle_test")
+    target_sources(idle_test PRIVATE Source/test_idle.cpp)
+    target_compile_definitions(idle_test PUBLIC JUCE_USE_CURL=0 JUCE_WEB_BROWSER=0)
+    target_include_directories(idle_test PRIVATE Source)
+    target_link_libraries(idle_test PRIVATE
+        juce::juce_dsp juce::juce_audio_basics
+        juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+endif()
+
 if(MSVC)
     target_compile_options(Octane PRIVATE /W4)
 else()
