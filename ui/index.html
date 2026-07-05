@@ -179,8 +179,7 @@
   .stick{
     position:absolute; z-index:4; left:50%; top:23.3%; width:50px; height:50px;
     transform:translate(-50%,-50%);
-    transition:left .34s cubic-bezier(.34,1.42,.5,1), top .34s cubic-bezier(.34,1.42,.5,1);
-    will-change:left,top;
+    will-change:left,top;   /* position driven per-frame by the gate-physics rAF loop */
   }
   .knobstick{
     position:absolute; inset:0; border-radius:50%;
@@ -395,7 +394,60 @@ function tachLoop(){
 }
 requestAnimationFrame(tachLoop);
 
-// ---- gear UI ----
+// ======================================================================
+//  H-GATE SHIFTER PHYSICS
+//  The knob is constrained to the gate channels: 3 vertical rails joined
+//  by one horizontal corridor at mid-height. It can only change rails by
+//  passing through the corridor — exactly like a real manual shifter.
+//  All positions are in the 300x300 gate viewBox (matches the SVG gate).
+// ======================================================================
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const RAILS = [91, 150, 209];   // left / centre / right rail x
+const Y_TOP = 70, Y_MID = 150, Y_BOT = 230;
+const nearestRail = x => RAILS.reduce((a,b) => Math.abs(b-x) < Math.abs(a-x) ? b : a, RAILS[0]);
+
+// knob live position + where it wants to go
+let kx = POS[2][0], ky = POS[2][1];   // start at gear 3 (Console) slot
+let desiredX = kx, desiredY = ky;     // pointer target (drag) or slot target (seat)
+let dragging = false;
+
+// gate-gated easing: move (kx,ky) one step toward (desiredX,desiredY),
+// but only ever along the channels — vertical on a rail, horizontal on the corridor.
+function stepGate(){
+  const EASE = 0.35, SNAP = 0.6;
+  const railX = nearestRail(kx);
+  const atCorridor = Math.abs(ky - Y_MID) < 4;
+  const aligned    = Math.abs(kx - railX) < 4;
+  const wantRail   = nearestRail(desiredX);
+
+  let tx = kx, ty = ky;
+  if (!atCorridor) {
+    // locked to current rail — can only slide vertically.
+    tx = railX;
+    // to reach a different rail we must first return to the corridor.
+    ty = (wantRail !== railX) ? Y_MID : clamp(desiredY, Y_TOP, Y_BOT);
+  } else if (aligned && Math.abs(desiredY - Y_MID) > 26 && wantRail === railX) {
+    // sitting on a rail∩corridor junction and the target is up/down this rail — leave via the rail.
+    tx = railX;
+    ty = clamp(desiredY, Y_TOP, Y_BOT);
+  } else {
+    // in the corridor — slide horizontally toward the target rail.
+    ty = Y_MID;
+    tx = clamp(desiredX, RAILS[0], RAILS[RAILS.length-1]);
+  }
+
+  kx += (tx - kx) * EASE;
+  ky += (ty - ky) * EASE;
+  if (Math.abs(tx - kx) < SNAP) kx = tx;
+  if (Math.abs(ty - ky) < SNAP) ky = ty;
+
+  stick.style.left = (kx/300*100) + '%';
+  stick.style.top  = (ky/300*100) + '%';
+  requestAnimationFrame(stepGate);
+}
+requestAnimationFrame(stepGate);
+
+// visuals only — position is owned by the physics loop above
 function renderGear(){
   const idx = Math.round(P.gear.get());
   const g = GEARS[idx] || GEARS[2];
@@ -405,9 +457,8 @@ function renderGear(){
   document.querySelectorAll('.glabel').forEach(el =>
     el.classList.toggle('active', Number(el.dataset.gear) === idx));
   knobEl.setAttribute('aria-valuetext', `Gear ${g.num}, ${g.name}`);
-  const p = POS[idx] || POS[2];
-  stick.style.left = (p[0]/300*100) + '%';
-  stick.style.top  = (p[1]/300*100) + '%';
+  // when the gear changes from anywhere other than an active drag, seat the stick in that slot
+  if (!dragging) { const p = POS[idx] || POS[2]; desiredX = p[0]; desiredY = p[1]; }
 }
 P.gear.onChange(() => { renderGear(); markModified(); });
 
@@ -416,32 +467,44 @@ document.querySelectorAll('.glabel').forEach(el =>
 
 knobEl.addEventListener('keydown', e => {
   const idx = Math.round(P.gear.get());
-  if (e.key === 'ArrowRight' || e.key === 'ArrowUp'){ e.preventDefault(); P.gear.set(Math.min(4, idx + 1)); }
-  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown'){ e.preventDefault(); P.gear.set(Math.max(0, idx - 1)); }
-  if (e.key.toLowerCase() === 'r'){ e.preventDefault(); P.gear.set(5); }
+  if (e.key === 'ArrowUp')   { e.preventDefault(); const g={0:0,1:0,2:2,3:2,4:4,5:4}[idx]; P.gear.set(g); }   // up the rail
+  if (e.key === 'ArrowDown') { e.preventDefault(); const g={0:1,1:1,2:3,3:3,4:5,5:5}[idx]; P.gear.set(g); }   // down the rail
+  if (e.key === 'ArrowLeft') { e.preventDefault(); const g={2:0,3:1,4:2,5:3}[idx]; if(g!==undefined) P.gear.set(g); }
+  if (e.key === 'ArrowRight'){ e.preventDefault(); const g={0:2,1:3,2:4,3:5}[idx]; if(g!==undefined) P.gear.set(g); }
 });
 
-// drag stick to nearest slot
+// ---- constrained drag: pointer drives `desired`; the gate loop routes the knob ----
 const wrap = document.querySelector('.plate-wrap');
-let draggingStick = false;
-function pickSlot(e){
+function pointerToGate(e){
   const r = wrap.getBoundingClientRect();
-  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  return [ clamp((e.clientX - r.left) / r.width  * 300, RAILS[0], RAILS[2]),
+           clamp((e.clientY - r.top)  / r.height * 300, Y_TOP, Y_BOT) ];
+}
+function nearestSlot(){
   let best = 2, bd = 1e9;
   for (const k of Object.keys(POS)){
-    const p = POS[k], px = p[0]/300*r.width, py = p[1]/300*r.height;
-    const d = (px-cx)**2 + (py-cy)**2;
+    const d = (POS[k][0]-kx)**2 + (POS[k][1]-ky)**2;
     if (d < bd){ bd = d; best = Number(k); }
   }
   return best;
 }
-knobEl.addEventListener('pointerdown', e => { draggingStick = true; knobEl.setPointerCapture(e.pointerId); });
+knobEl.addEventListener('pointerdown', e => {
+  dragging = true; knobEl.setPointerCapture(e.pointerId);
+  [desiredX, desiredY] = pointerToGate(e);
+});
 knobEl.addEventListener('pointermove', e => {
-  if (!draggingStick) return;
-  const g = pickSlot(e);
+  if (!dragging) return;
+  [desiredX, desiredY] = pointerToGate(e);
+  // engage a gear the moment the knob seats into a top/bottom slot mid-drag
+  const g = nearestSlot();
+  if ((Math.abs(ky-Y_TOP)<10 || Math.abs(ky-Y_BOT)<10) && g !== Math.round(P.gear.get())) P.gear.set(g);
+});
+knobEl.addEventListener('pointerup', () => {
+  dragging = false;
+  const g = nearestSlot();              // snap into the nearest gear on release
+  desiredX = POS[g][0]; desiredY = POS[g][1];
   if (g !== Math.round(P.gear.get())) P.gear.set(g);
 });
-knobEl.addEventListener('pointerup', () => { draggingStick = false; });
 
 // ---- knob row ----
 const KNOBS = [
