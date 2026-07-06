@@ -48,14 +48,33 @@ jobs:
           cd "build/Octane_artefacts/Release/VST3"
           7z a -tzip "$GITHUB_WORKSPACE/dist/FIZZFUEL-v${{ steps.version.outputs.version }}-Windows-VST3.zip" "FIZZFUEL.vst3"
 
+      - name: Stage VST3 for installer
+        shell: bash
+        run: |
+          mkdir -p dist/Windows/VST3
+          cp -r "build/Octane_artefacts/Release/VST3/FIZZFUEL.vst3" dist/Windows/VST3/
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.version }} installer\windows\octane.iss
+
       - name: Upload VST3 artifact
         uses: actions/upload-artifact@v4
         with:
           name: FIZZFUEL-Windows-VST3
           path: dist/FIZZFUEL-v*-Windows-VST3.zip
 
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FIZZFUEL-Windows-Installer
+          path: dist/Windows/Installer/*.exe
+
       - name: Attach to release (tag builds)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/FIZZFUEL-v*-Windows-VST3.zip
+          files: |
+            dist/FIZZFUEL-v*-Windows-VST3.zip
+            dist/Windows/Installer/FIZZFUEL-v*-Windows-Installer.exe

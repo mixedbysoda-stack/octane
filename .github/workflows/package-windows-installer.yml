@@ -1,0 +1,63 @@
+name: Package Windows Installer
+
+# Repackages an existing release's Windows VST3 zip into an Inno Setup
+# installer EXE and attaches it to the same release. Lets us ship an
+# installer for an already-published release without rebuilding source
+# (main may carry unreleased work).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to package (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  package-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download release VST3 zip
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.tag }}" --pattern '*Windows-VST3.zip' --dir dist
+
+      - name: Stage VST3 for installer
+        shell: bash
+        run: |
+          mkdir -p dist/Windows/VST3
+          7z x dist/*Windows-VST3.zip -odist/Windows/VST3
+
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ inputs.tag }}
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.version }} installer\windows\octane.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FIZZFUEL-Windows-Installer
+          path: dist/Windows/Installer/*.exe
+
+      - name: Attach installer to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ inputs.tag }}" dist/Windows/Installer/*.exe --clobber
