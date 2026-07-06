@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
     tags: ['v*']
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -22,108 +20,42 @@ jobs:
       - name: Clone JUCE (pinned to the version we build against locally)
         run: git clone --depth 1 --branch 8.0.12 https://github.com/juce-framework/JUCE.git JUCE
 
+      # The WebView GUI needs the WebView2 SDK at CONFIGURE time — JUCE's
+      # find_package(WebView2) globs *Microsoft.Web.WebView2* under
+      # JUCE_WEBVIEW2_PACKAGE_LOCATION.
+      - name: Install WebView2 SDK
+        shell: pwsh
+        run: nuget install Microsoft.Web.WebView2 -OutputDirectory "${{ github.workspace }}\packages"
+
       - name: Get version from CMakeLists.txt
         id: version
         shell: bash
         run: |
           VERSION=$(sed -n 's/^project(Octane VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
 
-      # ---------- PAID BUILD ----------
-      - name: Configure (paid)
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCOPY_AFTER_BUILD=OFF
+      # Windows = VST3 (+ Standalone). No AAX (needs separate PACE Windows wrap).
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCOPY_AFTER_BUILD=OFF -DJUCE_WEBVIEW2_PACKAGE_LOCATION="${{ github.workspace }}/packages"
 
-      - name: Build (paid)
-        run: cmake --build build --config Release --parallel
+      - name: Build VST3
+        run: cmake --build build --config Release --target Octane_VST3 --parallel
 
-      - name: Collect paid artifacts
+      - name: Package VST3
         shell: bash
         run: |
-          mkdir -p dist/Windows/VST3 dist/Windows/Standalone
-          cp -r "build/Octane_artefacts/Release/VST3/FIZZFUEL.vst3" dist/Windows/VST3/ || true
-          cp "build/Octane_artefacts/Release/Standalone/FIZZFUEL.exe" dist/Windows/Standalone/ || true
+          mkdir -p dist
+          cd "build/Octane_artefacts/Release/VST3"
+          7z a -tzip "$GITHUB_WORKSPACE/dist/FIZZFUEL-v${{ steps.version.outputs.version }}-Windows-VST3.zip" "FIZZFUEL.vst3"
 
-      - name: Update Inno Setup version (paid)
-        shell: bash
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          sed -i "s/AppVersion=.*/AppVersion=$VERSION/" installer/windows/octane.iss
-          sed -i "s/AppVerName=.*/AppVerName=FIZZFUEL v$VERSION/" installer/windows/octane.iss
-          sed -i "s/OutputBaseFilename=.*/OutputBaseFilename=FIZZFUEL-v$VERSION-Windows-Installer/" installer/windows/octane.iss
-
-      - name: Build Installer (paid)
-        shell: cmd
-        run: |
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\windows\octane.iss
-
-      # ---------- DEMO BUILD ----------
-      - name: Configure (demo)
-        run: cmake -B build-demo -DCMAKE_BUILD_TYPE=Release -DBUILD_DEMO=ON -DCOPY_AFTER_BUILD=OFF
-
-      - name: Build (demo)
-        run: cmake --build build-demo --config Release --parallel
-
-      - name: Collect demo artifacts
-        shell: bash
-        run: |
-          mkdir -p dist/Windows-Demo/VST3 dist/Windows-Demo/Standalone
-          cp -r "build-demo/Octane_artefacts/Release/VST3/FIZZFUEL.vst3" dist/Windows-Demo/VST3/ || true
-          cp "build-demo/Octane_artefacts/Release/Standalone/FIZZFUEL.exe" dist/Windows-Demo/Standalone/ || true
-
-      - name: Build Demo Installer
-        shell: bash
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          cp installer/windows/octane.iss installer/windows/octane-demo.iss
-          sed -i "s|dist\\\\Windows\\\\VST3|dist\\\\Windows-Demo\\\\VST3|g" installer/windows/octane-demo.iss
-          sed -i "s|dist\\\\Windows\\\\Standalone|dist\\\\Windows-Demo\\\\Standalone|g" installer/windows/octane-demo.iss
-          sed -i "s|AppName=FIZZFUEL|AppName=FIZZFUEL Demo|" installer/windows/octane-demo.iss
-          sed -i "s|DefaultDirName={autopf}\\\\Carbonated Audio\\\\FIZZFUEL|DefaultDirName={autopf}\\\\Carbonated Audio\\\\FIZZFUEL Demo|" installer/windows/octane-demo.iss
-          sed -i "s/OutputBaseFilename=.*/OutputBaseFilename=FIZZFUEL-v$VERSION-Demo-Windows-Installer/" installer/windows/octane-demo.iss
-
-      - name: Build Demo Installer (Inno)
-        shell: cmd
-        run: |
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\windows\octane-demo.iss
-
-      # ---------- UPLOAD ARTIFACTS ----------
-      - name: Upload paid VST3
+      - name: Upload VST3 artifact
         uses: actions/upload-artifact@v4
         with:
           name: FIZZFUEL-Windows-VST3
-          path: dist/Windows/VST3/
+          path: dist/FIZZFUEL-v*-Windows-VST3.zip
 
-      - name: Upload paid Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: FIZZFUEL-Windows-Installer
-          path: dist/Windows/Installer/FIZZFUEL-v*-Windows-Installer.exe
-
-      - name: Upload demo Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: FIZZFUEL-Demo-Windows-Installer
-          path: dist/Windows/Installer/FIZZFUEL-v*-Demo-Windows-Installer.exe
-
-      # ---------- RELEASE ----------
-      - name: Zip paid artifacts
+      - name: Attach to release (tag builds)
         if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          cd dist/Windows && 7z a -tzip ../../FIZZFUEL-Windows.zip VST3/ Standalone/
-
-      - name: Upload paid Release (non-demo tags)
-        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'demo')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            FIZZFUEL-Windows.zip
-            dist/Windows/Installer/FIZZFUEL-v*-Windows-Installer.exe
-
-      - name: Upload demo Release (demo tags)
-        if: contains(github.ref, 'demo')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/Windows/Installer/FIZZFUEL-v*-Demo-Windows-Installer.exe
+          files: dist/FIZZFUEL-v*-Windows-VST3.zip
